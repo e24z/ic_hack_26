@@ -19,4 +19,5 @@ overseer:
 - validate()
 
 - at the end of the research phase, it's just a massive summarise() & valiate() call no?
-- if so, is it feasible to have many instances of one agent continually judging itself
+- if so, is it feasible to have many instances of one agent continually judging itself?
+
