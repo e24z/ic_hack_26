@@ -22,22 +22,28 @@ class OpenRouterBackend:
         self._base_url = base_url
         self._timeout_s = timeout_s
 
-    async def generate_summary(self, data: dict | list) -> str:
+    async def generate_summary(
+        self, data: dict | list | str, guidance: str | None = None
+    ) -> str:
         try:
             httpx = importlib.import_module("httpx")
         except ImportError as exc:
             raise RuntimeError("httpx is required for OpenRouterBackend") from exc
 
         payload_text = self._serialize_payload(data)
+        system_prompt = (
+            "Summarize whatever content you receive. The input may be messy, "
+            "partial, or inconsistently structured. Return a plain text summary."
+        )
+        if guidance:
+            system_prompt = f"{system_prompt} {guidance}"
+
         body = {
             "model": self._model,
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                        "Summarize whatever content you receive. The input may be messy, "
-                        "partial, or inconsistently structured. Return a plain text summary."
-                    ),
+                    "content": system_prompt,
                 },
                 {"role": "user", "content": payload_text},
             ],
@@ -63,7 +69,9 @@ class OpenRouterBackend:
             raise RuntimeError("OpenRouter response missing summary content")
         return content.strip()
 
-    def _serialize_payload(self, data: dict | list) -> str:
+    def _serialize_payload(self, data: dict | list | str) -> str:
+        if isinstance(data, str):
+            return data
         try:
             return json.dumps(data, ensure_ascii=True)
         except TypeError:

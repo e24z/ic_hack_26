@@ -1,0 +1,79 @@
+# Model Configuration Profiles
+#
+# This file defines named configuration profiles for different deployment scenarios.
+# Switch between profiles using the MODEL_PROFILE environment variable:
+#
+#   MODEL_PROFILE=dev-fast python test_end_to_end.py
+#   MODEL_PROFILE=dev-accurate python test_end_to_end.py
+#   MODEL_PROFILE=prod python test_end_to_end.py
+#
+# Environment variable expansion is supported using ${VAR} syntax.
+
+profiles:
+  # Fast iteration profile - uses mocks for quick testing without API calls
+  dev-fast:
+    summarizer:
+      backend: openrouter
+      model: upstage/solar-pro-3:free
+      api_key: ${OPENROUTER_API_KEY}
+      base_url: https://openrouter.ai/api/v1
+    nli:
+      backend: mock
+    lettuce:
+      backend: mock
+
+  # Accurate development profile - single process with real models
+  # No separate servers needed, everything runs in-process
+  dev-accurate:
+    summarizer:
+      backend: openrouter
+      model: upstage/solar-pro-3:free
+      api_key: ${OPENROUTER_API_KEY}
+      base_url: https://openrouter.ai/api/v1
+    nli:
+      backend: direct  # In-process, no server needed
+      model: upstage/solar-pro-3:free
+      api_key: ${OPENROUTER_API_KEY}
+      base_url: https://openrouter.ai/api/v1
+    lettuce:
+      backend: direct  # In-process, no server needed
+      model_path: KRLabsOrg/lettucedect-base-modernbert-en-v1
+
+  # Production profile - distributed deployment with separate services
+  # Requires running NLI and Lettuce servers separately
+  prod:
+    summarizer:
+      backend: openrouter
+      model: anthropic/claude-3-5-sonnet
+      api_key: ${OPENROUTER_API_KEY}
+      base_url: https://openrouter.ai/api/v1
+    nli:
+      backend: http  # Separate service
+      url: http://nli-service:9000
+    lettuce:
+      backend: http  # Separate service
+      url: http://lettuce-service:8000
+
+  # Testing profile - all mocks for fast automated tests
+  test:
+    summarizer:
+      backend: mock
+    nli:
+      backend: mock
+    lettuce:
+      backend: mock
+
+  # Local HTTP profile - for testing distributed architecture locally
+  # Start servers with: python nli_openrouter_server.py & python lettuce_server.py &
+  local-http:
+    summarizer:
+      backend: openrouter
+      model: upstage/solar-pro-3:free
+      api_key: ${OPENROUTER_API_KEY}
+      base_url: https://openrouter.ai/api/v1
+    nli:
+      backend: http
+      url: http://localhost:9000
+    lettuce:
+      backend: http
+      url: http://localhost:8000
