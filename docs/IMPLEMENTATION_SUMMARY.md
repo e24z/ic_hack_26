@@ -37,7 +37,7 @@ This implementation adds a flexible YAML-based configuration system and eliminat
 
 **Modified Files:**
 - `models/validators/lettucedetect.py` - Now accepts optional `lettuce_backend` parameter for direct mode
-- `test_end_to_end.py` - Uses new configuration system
+- `tests/test_end_to_end.py` - Uses new configuration system
 - `.env.example` - Added migration notes and MODEL_PROFILE variable
 - `pyproject.toml` - Added pyyaml dependency
 
@@ -47,32 +47,32 @@ This implementation adds a flexible YAML-based configuration system and eliminat
 
 ```bash
 # Single process with real models, no servers needed!
-MODEL_PROFILE=dev-accurate python test_end_to_end.py
+MODEL_PROFILE=dev-accurate python tests/test_end_to_end.py
 ```
 
 ### Fast Testing with Mocks
 
 ```bash
 # All mocks, no API calls or model loading
-MODEL_PROFILE=test python test_end_to_end.py
+MODEL_PROFILE=test python tests/test_end_to_end.py
 ```
 
 ### Development with Fast Iteration
 
 ```bash
 # Real summarizer, mock validators (fast iteration)
-MODEL_PROFILE=dev-fast python test_end_to_end.py
+MODEL_PROFILE=dev-fast python tests/test_end_to_end.py
 ```
 
 ### Distributed Deployment (Production)
 
 ```bash
 # Start servers (in separate terminals)
-python nli_openrouter_server.py
-python lettuce_server.py
+python servers/nli_openrouter_server.py
+python servers/lettuce_server.py
 
 # Run with HTTP backends
-MODEL_PROFILE=prod python test_end_to_end.py
+MODEL_PROFILE=prod python tests/test_end_to_end.py
 ```
 
 ## Configuration Profiles
@@ -91,15 +91,15 @@ The `config/models.yaml` file defines these profiles:
 ```bash
 # Edit .env file to change models
 # Start 2 servers in separate terminals
-python nli_openrouter_server.py      # Terminal 1
-python lettuce_server.py              # Terminal 2
-python test_end_to_end.py             # Terminal 3
+python servers/nli_openrouter_server.py      # Terminal 1
+python servers/lettuce_server.py              # Terminal 2
+python tests/test_end_to_end.py             # Terminal 3
 ```
 
 ### After
 ```bash
 # Single command, no server management
-MODEL_PROFILE=dev-accurate python test_end_to_end.py
+MODEL_PROFILE=dev-accurate python tests/test_end_to_end.py
 ```
 
 ## Verification Results
@@ -131,7 +131,7 @@ Additional verifications:
 The implementation is fully backward compatible:
 
 1. **Existing .env files continue working** - If `config/models.yaml` doesn't exist, the system falls back to environment variables
-2. **Server scripts remain available** - `nli_openrouter_server.py` and `lettuce_server.py` still work for distributed deployments
+2. **Server scripts remain available** - `servers/nli_openrouter_server.py` and `servers/lettuce_server.py` still work for distributed deployments
 3. **Gradual adoption** - Can migrate to YAML config at your own pace
 
 ## Next Steps

@@ -27,7 +27,7 @@ mkdir -p logs
 
 # Start NLI server
 echo "[1/2] Starting NLI server on port 9000..."
-python nli_openrouter_server.py > logs/nli_server.log 2>&1 &
+python servers/nli_openrouter_server.py > logs/nli_server.log 2>&1 &
 NLI_PID=$!
 echo "  NLI server started (PID: $NLI_PID)"
 
@@ -36,7 +36,7 @@ sleep 2
 
 # Start LettuceDetect server
 echo "[2/2] Starting LettuceDetect server on port 8000..."
-python lettuce_server.py > logs/lettuce_server.log 2>&1 &
+python servers/lettuce_server.py > logs/lettuce_server.log 2>&1 &
 LETTUCE_PID=$!
 echo "  LettuceDetect server started (PID: $LETTUCE_PID)"
 
@@ -52,8 +52,8 @@ echo "  NLI:          tail -f logs/nli_server.log"
 echo "  LettuceDetect: tail -f logs/lettuce_server.log"
 echo ""
 echo "To run tests:"
-echo "  python test_end_to_end.py"
+echo "  python tests/test_end_to_end.py"
 echo ""
 echo "To stop servers:"
-echo "  ./stop_servers.sh"
+echo "  ./scripts/stop_servers.sh"
 echo ""

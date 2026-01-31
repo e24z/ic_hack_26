@@ -64,7 +64,7 @@ profiles:
       backend: mock
 
   # Local HTTP profile - for testing distributed architecture locally
-  # Start servers with: python nli_openrouter_server.py & python lettuce_server.py &
+  # Start servers with: ./scripts/start_servers.sh
   local-http:
     summarizer:
       backend: openrouter
