@@ -137,7 +137,7 @@ class AnthropicAdapter(LLMProvider):
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "claude-3-haiku-20240307",
+        model: str = "claude-haiku-4-5-20251001",
     ):
         """
         Initialize the Anthropic adapter.

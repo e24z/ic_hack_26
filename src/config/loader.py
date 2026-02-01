@@ -67,7 +67,7 @@ class ManagingAgentConfig(BaseModel):
     """Configuration for the Managing Agent (intelligent splitting with Claude Opus)."""
 
     enabled: bool = False
-    model: str = "claude-3-opus-20240229"
+    model: str = "claude-opus-4-5-20251101"
     min_papers_before_evaluation: int = 5
     evaluation_interval: int = 2  # Evaluate every N iterations
 
@@ -75,7 +75,7 @@ class ManagingAgentConfig(BaseModel):
 class ExecutionAgentConfig(BaseModel):
     """Configuration for Execution Agents (Claude Haiku for fast operations)."""
 
-    model: str = "claude-3-haiku-20240307"
+    model: str = "claude-haiku-4-5-20251001"
 
 
 class MasterAgentConfig(BaseModel):
