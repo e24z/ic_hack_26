@@ -74,7 +74,7 @@ export function EventFeed({ sessionId, replayTime }: EventFeedProps) {
       case "branch_created":
         return `New branch: ${(payload.query as string)?.slice(0, 40)}...`;
       case "branch_status_changed":
-        return `Branch ${payload.branchId}: ${payload.oldStatus} → ${payload.newStatus}`;
+        return `Branch ${(payload.branchId as string)?.slice(0, 8)}: ${payload.status ?? "updated"}`;
       case "papers_added":
         return `Added ${payload.count} papers`;
       case "summary_validated":
