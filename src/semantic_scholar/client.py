@@ -235,3 +235,193 @@ class SemanticScholarClient:
             response = await client.get(url)
             response.raise_for_status()
             return response.content
+
+    async def get_paper_citations(
+        self,
+        paper_id: str,
+        fields: list[str] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """
+        Get papers that cite the given paper.
+
+        Uses the /paper/{paper_id}/citations endpoint.
+
+        Args:
+            paper_id: Semantic Scholar paper ID
+            fields: Fields to return for each citing paper
+            limit: Maximum number of citations to return (max 1000)
+            offset: Offset for pagination
+
+        Returns:
+            Dict with 'data' list of citing papers and pagination info
+        """
+        default_fields = [
+            "paperId",
+            "title",
+            "abstract",
+            "authors",
+            "year",
+            "citationCount",
+            "fieldsOfStudy",
+            "publicationTypes",
+            "openAccessPdf",
+            "externalIds",
+        ]
+
+        params: dict[str, Any] = {
+            "fields": ",".join(fields or default_fields),
+            "limit": min(limit, 1000),
+            "offset": offset,
+        }
+
+        logger.info(f"Fetching citations for paper {paper_id}, limit={limit}")
+        response = await self.get(f"/paper/{paper_id}/citations", params=params)
+        data = response.json()
+
+        found = len(data.get("data", []))
+        logger.info(f"Found {found} citations for paper {paper_id}")
+
+        return data
+
+    async def get_paper_references(
+        self,
+        paper_id: str,
+        fields: list[str] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """
+        Get papers referenced by the given paper.
+
+        Uses the /paper/{paper_id}/references endpoint.
+
+        Args:
+            paper_id: Semantic Scholar paper ID
+            fields: Fields to return for each referenced paper
+            limit: Maximum number of references to return (max 1000)
+            offset: Offset for pagination
+
+        Returns:
+            Dict with 'data' list of referenced papers and pagination info
+        """
+        default_fields = [
+            "paperId",
+            "title",
+            "abstract",
+            "authors",
+            "year",
+            "citationCount",
+            "fieldsOfStudy",
+            "publicationTypes",
+            "openAccessPdf",
+            "externalIds",
+        ]
+
+        params: dict[str, Any] = {
+            "fields": ",".join(fields or default_fields),
+            "limit": min(limit, 1000),
+            "offset": offset,
+        }
+
+        logger.info(f"Fetching references for paper {paper_id}, limit={limit}")
+        response = await self.get(f"/paper/{paper_id}/references", params=params)
+        data = response.json()
+
+        found = len(data.get("data", []))
+        logger.info(f"Found {found} references for paper {paper_id}")
+
+        return data
+
+    async def get_all_citations(
+        self,
+        paper_id: str,
+        fields: list[str] | None = None,
+        max_citations: int = 500,
+    ) -> list[dict[str, Any]]:
+        """
+        Get all citations for a paper, handling pagination.
+
+        Args:
+            paper_id: Semantic Scholar paper ID
+            fields: Fields to return for each citing paper
+            max_citations: Maximum total citations to fetch
+
+        Returns:
+            List of citing paper data dicts
+        """
+        all_citations: list[dict[str, Any]] = []
+        offset = 0
+        batch_size = 100
+
+        while len(all_citations) < max_citations:
+            remaining = max_citations - len(all_citations)
+            limit = min(remaining, batch_size)
+
+            data = await self.get_paper_citations(
+                paper_id, fields=fields, limit=limit, offset=offset
+            )
+
+            citations = data.get("data", [])
+            if not citations:
+                break
+
+            # Extract the citing paper from each citation entry
+            for entry in citations:
+                citing_paper = entry.get("citingPaper")
+                if citing_paper and citing_paper.get("paperId"):
+                    all_citations.append(citing_paper)
+
+            if data.get("next") is None:
+                break
+
+            offset = data["next"]
+
+        return all_citations[:max_citations]
+
+    async def get_all_references(
+        self,
+        paper_id: str,
+        fields: list[str] | None = None,
+        max_references: int = 500,
+    ) -> list[dict[str, Any]]:
+        """
+        Get all references for a paper, handling pagination.
+
+        Args:
+            paper_id: Semantic Scholar paper ID
+            fields: Fields to return for each referenced paper
+            max_references: Maximum total references to fetch
+
+        Returns:
+            List of referenced paper data dicts
+        """
+        all_references: list[dict[str, Any]] = []
+        offset = 0
+        batch_size = 100
+
+        while len(all_references) < max_references:
+            remaining = max_references - len(all_references)
+            limit = min(remaining, batch_size)
+
+            data = await self.get_paper_references(
+                paper_id, fields=fields, limit=limit, offset=offset
+            )
+
+            references = data.get("data", [])
+            if not references:
+                break
+
+            # Extract the cited paper from each reference entry
+            for entry in references:
+                cited_paper = entry.get("citedPaper")
+                if cited_paper and cited_paper.get("paperId"):
+                    all_references.append(cited_paper)
+
+            if data.get("next") is None:
+                break
+
+            offset = data["next"]
+
+        return all_references[:max_references]

@@ -62,3 +62,76 @@ class PDFExtractor(Protocol):
             Extracted text content from the PDF
         """
         ...
+
+
+@runtime_checkable
+class CitationProvider(Protocol):
+    """Protocol for citation graph traversal."""
+
+    async def get_citations(
+        self,
+        paper_id: str,
+        limit: int = 100,
+    ) -> list[PaperDetails]:
+        """
+        Get papers that cite the given paper.
+
+        Args:
+            paper_id: Paper ID to find citations for
+            limit: Maximum citations to return
+
+        Returns:
+            List of PaperDetails for citing papers
+        """
+        ...
+
+    async def get_references(
+        self,
+        paper_id: str,
+        limit: int = 100,
+    ) -> list[PaperDetails]:
+        """
+        Get papers referenced by the given paper.
+
+        Args:
+            paper_id: Paper ID to find references for
+            limit: Maximum references to return
+
+        Returns:
+            List of PaperDetails for referenced papers
+        """
+        ...
+
+    async def get_citations_batch(
+        self,
+        paper_ids: list[str],
+        limit_per_paper: int = 20,
+    ) -> list[PaperDetails]:
+        """
+        Get papers that cite any of the given papers.
+
+        Args:
+            paper_ids: List of paper IDs
+            limit_per_paper: Max citations per paper
+
+        Returns:
+            Deduplicated list of citing papers
+        """
+        ...
+
+    async def get_references_batch(
+        self,
+        paper_ids: list[str],
+        limit_per_paper: int = 20,
+    ) -> list[PaperDetails]:
+        """
+        Get papers referenced by any of the given papers.
+
+        Args:
+            paper_ids: List of paper IDs
+            limit_per_paper: Max references per paper
+
+        Returns:
+            Deduplicated list of referenced papers
+        """
+        ...

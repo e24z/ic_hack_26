@@ -8,7 +8,7 @@ from .models import (
     SearchFilters,
     SearchResponse,
 )
-from .protocols import PaperSearchProvider, PDFExtractor
+from .protocols import PaperSearchProvider, PDFExtractor, CitationProvider
 from .adapters import SemanticScholarAdapter
 from .client import SemanticScholarClient
 from .search import search_papers, fetch_papers, fetch_papers_with_text, download_and_extract_pdf
@@ -24,6 +24,7 @@ __all__ = [
     # Protocols (for implementing custom providers)
     "PaperSearchProvider",
     "PDFExtractor",
+    "CitationProvider",
     # Adapters
     "SemanticScholarAdapter",
     # Low-level client

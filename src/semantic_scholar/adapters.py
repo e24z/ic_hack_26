@@ -13,10 +13,10 @@ from .models import (
     SearchFilters,
     SearchResponse,
 )
-from .protocols import PaperSearchProvider, PDFExtractor
+from .protocols import PaperSearchProvider, PDFExtractor, CitationProvider
 
 
-class SemanticScholarAdapter(PaperSearchProvider, PDFExtractor):
+class SemanticScholarAdapter(PaperSearchProvider, PDFExtractor, CitationProvider):
     """
     Adapter for Semantic Scholar API.
 
@@ -196,3 +196,123 @@ class SemanticScholarAdapter(PaperSearchProvider, PDFExtractor):
         finally:
             # Clean up temp file
             temp_path.unlink(missing_ok=True)
+
+    async def get_citations(
+        self,
+        paper_id: str,
+        limit: int = 100,
+    ) -> list[PaperDetails]:
+        """
+        Get papers that cite the given paper.
+
+        Args:
+            paper_id: Paper ID to find citations for
+            limit: Maximum citations to return
+
+        Returns:
+            List of PaperDetails for citing papers
+        """
+        self._ensure_entered()
+
+        citation_data = await self._client.get_all_citations(paper_id, max_citations=limit)
+
+        papers = []
+        for paper_dict in citation_data:
+            try:
+                papers.append(PaperDetails.model_validate(paper_dict))
+            except Exception as e:
+                logger.warning(f"Failed to parse citation paper: {e}")
+
+        return papers
+
+    async def get_references(
+        self,
+        paper_id: str,
+        limit: int = 100,
+    ) -> list[PaperDetails]:
+        """
+        Get papers referenced by the given paper.
+
+        Args:
+            paper_id: Paper ID to find references for
+            limit: Maximum references to return
+
+        Returns:
+            List of PaperDetails for referenced papers
+        """
+        self._ensure_entered()
+
+        reference_data = await self._client.get_all_references(paper_id, max_references=limit)
+
+        papers = []
+        for paper_dict in reference_data:
+            try:
+                papers.append(PaperDetails.model_validate(paper_dict))
+            except Exception as e:
+                logger.warning(f"Failed to parse reference paper: {e}")
+
+        return papers
+
+    async def get_citations_batch(
+        self,
+        paper_ids: list[str],
+        limit_per_paper: int = 20,
+    ) -> list[PaperDetails]:
+        """
+        Get papers that cite any of the given papers (deduplicated).
+
+        Args:
+            paper_ids: List of paper IDs
+            limit_per_paper: Max citations per paper
+
+        Returns:
+            Deduplicated list of citing papers
+        """
+        self._ensure_entered()
+
+        seen_ids: set[str] = set()
+        all_papers: list[PaperDetails] = []
+
+        for paper_id in paper_ids:
+            try:
+                citations = await self.get_citations(paper_id, limit=limit_per_paper)
+                for paper in citations:
+                    if paper.paper_id not in seen_ids:
+                        seen_ids.add(paper.paper_id)
+                        all_papers.append(paper)
+            except Exception as e:
+                logger.warning(f"Failed to get citations for {paper_id}: {e}")
+
+        return all_papers
+
+    async def get_references_batch(
+        self,
+        paper_ids: list[str],
+        limit_per_paper: int = 20,
+    ) -> list[PaperDetails]:
+        """
+        Get papers referenced by any of the given papers (deduplicated).
+
+        Args:
+            paper_ids: List of paper IDs
+            limit_per_paper: Max references per paper
+
+        Returns:
+            Deduplicated list of referenced papers
+        """
+        self._ensure_entered()
+
+        seen_ids: set[str] = set()
+        all_papers: list[PaperDetails] = []
+
+        for paper_id in paper_ids:
+            try:
+                references = await self.get_references(paper_id, limit=limit_per_paper)
+                for paper in references:
+                    if paper.paper_id not in seen_ids:
+                        seen_ids.add(paper.paper_id)
+                        all_papers.append(paper)
+            except Exception as e:
+                logger.warning(f"Failed to get references for {paper_id}: {e}")
+
+        return all_papers
