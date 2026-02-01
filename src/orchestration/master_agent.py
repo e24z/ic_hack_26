@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from ..semantic_scholar import SemanticScholarAdapter
     from ..llm.protocols import LLMProvider
     from ..halugate import LocalHaluGate
+    from ..storage import ConvexClient
     from .models import (
         Branch,
         IterationResult,
@@ -126,6 +127,22 @@ class MasterAgent:
         self.auto_hypothesis = config.master_agent.auto_hypothesis_mode
         self.max_parallel_branches = config.master_agent.max_parallel_branches
 
+        # Convex client for realtime streaming (optional)
+        self._convex_client: ConvexClient | None = None
+
+    def set_convex_client(self, client: ConvexClient) -> None:
+        """Set the Convex client for realtime event streaming.
+
+        Args:
+            client: Configured ConvexClient instance
+        """
+        self._convex_client = client
+
+    @property
+    def convex_client(self) -> ConvexClient | None:
+        """Get the Convex client if configured."""
+        return self._convex_client
+
     @property
     def current_state(self) -> LoopState | None:
         """Get current loop state."""
@@ -178,7 +195,27 @@ class MasterAgent:
             f"with initial query: '{initial_query[:50]}...'"
         )
 
+        # Store branch info for async event emission
+        self._pending_branch_event = {
+            "branch_id": initial_branch.id,
+            "query": initial_query,
+            "mode": initial_branch.mode.value,
+            "parent_id": None,
+        }
+
         return state
+
+    async def emit_initial_branch_event(self) -> None:
+        """Emit the initial branch created event (call after start_loop)."""
+        if self._convex_client and hasattr(self, "_pending_branch_event"):
+            event = self._pending_branch_event
+            await self._convex_client.emit_branch_created(
+                branch_id=event["branch_id"],
+                query=event["query"],
+                mode=event["mode"],
+                parent_id=event["parent_id"],
+            )
+            delattr(self, "_pending_branch_event")
 
     async def run_iteration(
         self,
@@ -219,6 +256,17 @@ class MasterAgent:
 
         # Add result to branch
         branch.add_iteration(result)
+
+        # Emit Convex events
+        if self._convex_client:
+            await self._convex_client.emit_iteration_result(branch_id, result)
+            await self._convex_client.emit_branch_status_changed(
+                branch_id=branch_id,
+                status=branch.status.value,
+                context_used=branch.context_window_used,
+                paper_count=branch.total_papers,
+                summary_count=branch.total_summaries,
+            )
 
         # Auto-management checks
         if self.auto_split and self.branch_manager.should_split(branch):
@@ -277,6 +325,16 @@ class MasterAgent:
 
         # Save state
         self.state_store.save_state(self._current_state)
+
+        # Emit Convex events for new branches
+        if self._convex_client:
+            for new_branch in new_branches:
+                await self._convex_client.emit_branch_created(
+                    branch_id=new_branch.id,
+                    query=new_branch.query,
+                    mode=new_branch.mode.value,
+                    parent_id=branch_id,
+                )
 
         return [b.id for b in new_branches]
 
@@ -530,12 +588,19 @@ class ResearchSession:
         async with ResearchSession(config, "Transformer architectures") as session:
             await session.run(max_iterations=10)
             hypotheses = session.get_hypotheses()
+
+    With Convex streaming:
+        convex = ConvexClient()
+        await convex.connect()
+        async with ResearchSession(config, "query", convex_client=convex) as session:
+            await session.run(max_iterations=10)
     """
 
     def __init__(
         self,
         config: ProfileConfig,
         initial_query: str,
+        convex_client: ConvexClient | None = None,
     ):
         """
         Initialize a research session.
@@ -543,12 +608,14 @@ class ResearchSession:
         Args:
             config: Profile configuration
             initial_query: Initial research query
+            convex_client: Optional Convex client for realtime streaming
         """
         self.config = config
         self.initial_query = initial_query
         self._adapter = None
         self._summarizer = None
         self._master_agent = None
+        self._convex_client = convex_client
 
     async def __aenter__(self) -> ResearchSession:
         from ..semantic_scholar import SemanticScholarAdapter
@@ -574,12 +641,29 @@ class ResearchSession:
             config=self.config.research_loop,
         )
 
+        # Set up Convex client if provided
+        if self._convex_client and self._convex_client.enabled:
+            self._master_agent.set_convex_client(self._convex_client)
+
         # Start the loop
         self._master_agent.start_loop(self.initial_query)
+
+        # Create Convex session and emit initial events
+        if self._convex_client and self._convex_client.enabled:
+            await self._convex_client.create_session(
+                self._master_agent.current_state.loop_id,
+                self.initial_query,
+            )
+            await self._master_agent.emit_initial_branch_event()
 
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        # Update Convex session status
+        if self._convex_client and self._convex_client.enabled:
+            status = "failed" if exc_type else "completed"
+            await self._convex_client.update_session_status(status)
+
         # Close summarizer if it has async context
         if self._summarizer and hasattr(self._summarizer, '__aexit__'):
             await self._summarizer.__aexit__(exc_type, exc_val, exc_tb)
@@ -592,6 +676,13 @@ class ResearchSession:
         if not self._master_agent:
             raise RuntimeError("Session not started. Use 'async with' context manager.")
         return self._master_agent
+
+    @property
+    def loop_id(self) -> str:
+        """Get the current loop ID."""
+        if not self._master_agent or not self._master_agent.current_state:
+            raise RuntimeError("Session not started. Use 'async with' context manager.")
+        return self._master_agent.current_state.loop_id
 
     async def run(
         self,

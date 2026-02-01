@@ -19,3 +19,5 @@ e24z/
 node_modules/
 bun.lock
 package.json
+
+.env.local
