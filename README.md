@@ -6,6 +6,9 @@ Computers used to be machines of wonder. Today we have models capable of reasoni
 
 ERLA (Exploratory Recursive Language Agents) is our attempt to bring the sense of wonder back to computing—safely. We built a system that lets AI explore scientific literature recursively and autonomously, whilst maintaining epistemic integrity at every step.
 
+![Viewer](images/viewer.png)
+![Viewer](images/menu.png)
+
 ## What it does
 
 ERLA is a recursive research agent designed to explore scientific literature whilst remaining epistemically grounded. Rather than a monolithic system, ERLA orchestrates a fleet of parallel research units called **Scouts** (implemented as Branches).
