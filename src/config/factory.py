@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..llm.protocols import LLMProvider
-    from ..halugate import LocalHaluGate
+    from ..halugate.protocols import HallucinationDetectorProtocol
     from ..orchestration.overseer import Overseer
     from .loader import ProfileConfig, SummarizerConfig, HaluGateConfig, OverseerConfig
 
@@ -76,7 +76,7 @@ def create_summarizer(config: SummarizerConfig) -> LLMProvider:
         config: Summarizer configuration
 
     Returns:
-        LLMProvider instance (OpenRouterAdapter or Mock)
+        LLMProvider instance (OpenRouterAdapter, AnthropicAdapter, or Mock)
 
     Raises:
         ValueError: If backend type is not supported
@@ -92,6 +92,17 @@ def create_summarizer(config: SummarizerConfig) -> LLMProvider:
             model=config.model,
         )
 
+    elif config.backend == "anthropic":
+        from ..llm import AnthropicAdapter
+
+        if not config.api_key:
+            raise ValueError("Anthropic backend requires api_key")
+
+        return AnthropicAdapter(
+            api_key=config.api_key,
+            model=config.model or "claude-3-haiku-20240307",
+        )
+
     elif config.backend == "mock":
         return MockLLMProvider()
 
@@ -99,14 +110,14 @@ def create_summarizer(config: SummarizerConfig) -> LLMProvider:
         raise ValueError(f"Unsupported summarizer backend: {config.backend}")
 
 
-def create_halugate(config: HaluGateConfig) -> LocalHaluGate:
+def create_halugate(config: HaluGateConfig) -> HallucinationDetectorProtocol:
     """Create HaluGate from configuration.
 
     Args:
         config: HaluGate configuration
 
     Returns:
-        LocalHaluGate instance (local, HTTP, or mock)
+        HallucinationDetectorProtocol instance (local, HTTP, or mock)
 
     Raises:
         ValueError: If backend type is not supported or required fields are missing
@@ -120,12 +131,12 @@ def create_halugate(config: HaluGateConfig) -> LocalHaluGate:
         )
 
     elif config.backend == "http":
-        # HTTP backend would require a separate implementation
-        # For now, raise an error as HTTP is not yet implemented
-        raise NotImplementedError(
-            "HTTP HaluGate backend not yet implemented. "
-            "Use 'local' backend for now."
-        )
+        from ..halugate import HTTPHaluGate
+
+        if not config.url:
+            raise ValueError("HTTP HaluGate backend requires 'url' in config")
+
+        return HTTPHaluGate(base_url=config.url)
 
     elif config.backend == "mock":
         return MockHaluGate()

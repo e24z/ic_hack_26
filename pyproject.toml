@@ -10,10 +10,13 @@ dependencies = [
     "python-dotenv>=1.0",
     "pymupdf>=1.24",
     "openai>=1.0",  # OpenRouter uses OpenAI-compatible API
+    "anthropic>=0.40",  # Anthropic API client
     "lettucedetect>=0.1.8",  # Token-level hallucination detection
     "transformers>=4.40",  # NLI model
     "torch>=2.0",  # PyTorch backend
     "pyyaml>=6.0",  # YAML config loading
+    "fastapi>=0.115",  # HTTP server for HaluGate
+    "uvicorn>=0.34",  # ASGI server
 ]
 
 [dependency-groups]

@@ -1,7 +1,7 @@
 """LLM provider integrations with protocol-based adapter pattern."""
 
 from .protocols import LLMProvider, Message, MessageRole
-from .adapters import OpenRouterAdapter
+from .adapters import AnthropicAdapter, OpenRouterAdapter
 from .completion import complete, complete_with_messages
 
 __all__ = [
@@ -10,6 +10,7 @@ __all__ = [
     "Message",
     "MessageRole",
     # Adapters
+    "AnthropicAdapter",
     "OpenRouterAdapter",
     # Convenience functions
     "complete",

@@ -12,7 +12,7 @@ from pydantic import BaseModel
 class SummarizerConfig(BaseModel):
     """Configuration for summarizer backend."""
 
-    backend: Literal["openrouter", "mock"] = "openrouter"
+    backend: Literal["openrouter", "anthropic", "mock"] = "openrouter"
     model: str | None = None
     api_key: str | None = None
     base_url: str | None = None
